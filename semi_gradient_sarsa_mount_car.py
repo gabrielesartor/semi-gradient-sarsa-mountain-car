@@ -16,17 +16,17 @@ for the mountain car's Gym environment.
 """
 
 #Simulation parameters
-NUM_EPISODES = 100000
+NUM_EPISODES = 5000
 MAX_T = 200
 ALPHA = 0.01
 GAMMA = 0.98
 EPSILON = 0.2
 
-#Test flgas
+#Test flags
 DEBUG = False
 RENDER_POLICY = True
 MEAN_RANGE = 10
-NUM_EPISODES_PLOT = 100
+NUM_EPISODES_PLOT = 1000
 ALGORITHM = "sarsa"
 
 
@@ -35,7 +35,7 @@ def get_state(env):
     It calculates the vector representation of the current state. In this case,
     it is used a state aggregation representation.
     """
-    segmentation_factor = 2000
+    segmentation_factor = 100
     pos_segment = (env.high[0] - env.low[0]) / segmentation_factor
     vel_segment = (env.high[1] - env.low[1]) / segmentation_factor
     state = env.state
@@ -141,7 +141,7 @@ def learning_episode(env, weights, algorithm = "sarsa"):
 
         total_reward = total_reward + reward
 
-        if env.state[0]>0.5:
+        if done:
             weights = weights + ALPHA*(reward - Q_prev) * value_approx_grad(env, s, a, weights)
             break
 
@@ -153,7 +153,6 @@ def learning_episode(env, weights, algorithm = "sarsa"):
         #updata rule
         if algorithm == "sarsa":
             weights = weights + ALPHA*(reward + GAMMA*Q_next_a - Q_prev) * value_approx_grad(env, s, a, weights)
-            # weights = weights / np.linalg.norm(weights)
         else:
             raise NameError('Unknown algorithm name!')
 
@@ -187,13 +186,17 @@ def training(env, weights, rewards, algorithm):
 
         rewards[episode] = episode_reward
 
-        if episode % NUM_EPISODES_PLOT == 0 and episode!=0:
+        if (episode+1) % NUM_EPISODES_PLOT == 0:
+            np.save("mountain_car_semi_grad_weights_200_4.npy", weights)
             plt.plot(range(episode+1), rewards[:episode+1], "b")
             plt.axis([0, episode, np.min(rewards[:episode+1]), np.max(rewards[:episode+1])])
+            plt.xlabel("Episode")
+            plt.ylabel("Reward")
             plt.pause(0.1)
 
             if RENDER_POLICY:
                 render_policy(env, weights)
+
     return weights
 
 def render_policy(env, weights, epsilon = 0):
@@ -206,15 +209,12 @@ def render_policy(env, weights, epsilon = 0):
         env.render()
 
         s = get_state(env)
-        # print("weights inside render: ", weights)
         Q_values = [value_approx(env, s, action, weights) for action in range(env.action_space.n)]
-        # print("Q_values inside render: ", Q_values)
         a = select_action_e_greedy(env, Q_values, epsilon)
-        # print("a:", a)
 
         s_new, reward, done, _ = env.step(a)
 
-        if env.state[0]>0.5:
+        if done:
             print("I've reached the goal!")
             break
 
@@ -230,7 +230,11 @@ if __name__ == "__main__":
 
     weights = np.zeros(env_dim*env.action_space.n)
 
+    np.save("mountain_car_semi_grad_weights_200_3.npy", weights)
+
     weights = training(env, weights, rewards, algorithm = ALGORITHM)
+
+    np.save("mountain_car_semi_grad_weights_200_3.npy", weights)
 
     print("Execute final policy...")
     render_policy(env, weights)
